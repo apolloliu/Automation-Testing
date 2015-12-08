@@ -1,0 +1,2088 @@
+*** Settings ***
+Documentation     Test Instances
+Test Setup        Key_RunInstances    ${1}
+Test Teardown     Delete_All_Resoures
+Test Timeout      500 seconds
+Library           Selenium2Library
+Library           FtpLibrary
+Library           HttpLibrary.HTTP
+Library           Collections
+Library           C:/Python27/Lib/site-packages/MyLibrary/MyRequestsKeywords.py
+
+*** Variables ***
+${ip_addr}        https://180.97.185.118
+${owner}          usr-b6fhsw3c
+${zone}           bj
+${Corect_Status}    200
+${Status_code_error}    如果返回status_code为200，说明连接成功，否则失败
+${Instance_state}    ${TRUE}
+${Disk_state}     ${TRUE}
+${Image_state}    ${TRUE}
+${Router_state}    ${TRUE}
+${Ip_state}       ${TRUE}
+${InstanceBackup_state}    ${TRUE}
+${DiksBackup_state}    ${TRUE}
+${RunInstances_time}    60s
+${DeleteInstances_time}    20s
+${RebootInstances_time}    20s
+${StopInstances_time}    20s
+${StartInstances_time}    20s
+${RunInstances_time}    20s
+${CreateDisks_time}    20s
+${CreateBackups_time}    60s
+${UpdateInstances_time}    20s
+${GetInstanceVnc_time}    20s
+${ChangeInstancePassword_time}    10s
+${ResizeInstances_time}    80s
+${RebuildInstance_time}    20s
+${UpdateInstances_time}    20s
+${AttachInstanceDisks_time}    20s
+${CreateNet_time}    20s
+${Instances_list}    ${EMPTY}
+${Disks_list}     ${EMPTY}
+${Nets_list}      ${EMPTY}
+${Instance_type_id}    c1m1d20
+${Image_id}       img-3c799f82
+${Security_group}    sg-desgsj6d
+${Disk_type}      ssd
+${Disk_size}      10
+${Disk_count}     10
+${PublicNet_ip}    192.168.30.0/24
+${PublicNet_gateway_ip}    192.168.30.1
+${PrivateNet_ip1}    172.16.10.0/24
+${PublicNet_gateway_ip}    172.16.10.0
+${PrivateNet_ip2}    172.16.20.0/24
+${Ip_Bandwidth}    5
+${password}       aaaBBB123
+${Public}         public
+${Private}        private
+
+*** Test Cases ***
+Test_CreateInstance
+    [Documentation]    测试创建100个主机返回情况
+    [Setup]
+    ${resp}=    Key_MultiRunInstances    ${100}
+    ${json}=    To Json    ${resp.content}
+    Log To Console    ${json["ret_code"]}
+    ${msg}    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=19002    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=19002    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_CreatePublicNet
+    [Documentation]    创建一个公网子网
+    [Setup]
+    ${resp}=    Key_CreateNet    ${PublicNet_ip}    ${PublicNet_gateway_ip}    public
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==80054    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==80054    Fail    返回msg：${msg}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    [Teardown]
+
+Test_CreatePrivateNet
+    [Documentation]    创建两个内网子网
+    [Setup]
+    ${resp}=    Key_CreateNet    ${PrivateNet_ip1}    ${EMPTY}    private
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==80054    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==80054    Fail    返回msg：${msg}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    "CreateNet is error!"
+    ${resp}=    Key_CreateNet    ${PrivateNet_ip2}    ${EMPTY}    private
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})==80054    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==80054    Fail    返回msg：${msg}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    [Teardown]
+
+Test_1
+    [Documentation]    测试重启关机开机删除主机
+    [Tags]    EmptyInstances
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_2
+    [Documentation]    测试关机关机开机重启删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_3
+    [Documentation]    测试关机关机开机开机重启删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_4
+    [Documentation]    测试关机开机重启开机关机删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_5
+    [Documentation]    测试关机开机重启关机开机删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_6
+    [Documentation]    测试关机开机关机开机删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_7
+    [Documentation]    测试关机开机重启，主机创建三个备份，一次删除主机的所有备份，删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_CreateBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_CreateBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_CreateBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_8
+    [Documentation]    测试关机开机重启，创建备份，创建两个硬盘，主机挂载一个硬盘两次，主机挂载两个不同硬盘，分别卸载硬盘，删除备份，删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_CreateBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${count}=    Set Variable    ${2}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    Should Be Equal As Strings    '${Disk_info["ret_set"][0]["status"]}'    'available'
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    #加载同一块硬盘
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    #加载不同硬盘
+    #Should Be Equal As Strings    '${Disk_info["ret_set"][1]["status"]}'    'available'
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_9
+    [Documentation]    测试关机，开机，重启，创建备份，创建硬盘，主机加载硬盘，加入子网，卸载硬盘，删除该主机备份，删除主机
+    ${resp}=    Key_StopInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_StartInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_RebootInstances
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_CreateBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${count}=    Set Variable    ${1}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    #Should Be Equal As Strings    '${Disk_info["ret_set"][0]["status"]}'    'available'
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    ${resp}=    Key_JoinNets2    ${Nets_info["ret_set"][0]["net_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteBackups    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_10
+    [Documentation]    测试修改密码，更新主机名字，删除主机
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_ChangeInstancePassword    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${Instance_name}    Set Variable    Myinstance
+    ${resp}=    Key_UpdateInstances    ${Instances_info["ret_set"][0]["instance_id"]}    ${Instance_name}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_AllocateIps
+    [Documentation]    申请公网ip
+    [Setup]
+    ${resp}=    Key_AllocateIps    ${1}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    [Teardown]
+
+Test_11
+    [Documentation]    测试加入基础子网的绑定公网ip，加入公网子网，解绑公网ip，删除主机
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_DescribeIps
+    ${Ips_info}=    To Json    ${resp.content}
+    ${resp}=    Key_BindInstanceIp    ${Instances_info["ret_set"][0]["instance_id"]}    ${Ips_info["ret_set"][0]["ip_id"]}    ${Instances_info["ret_set"][0]["nets"][0]["mac_address"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    : FOR    ${n}    IN RANGE    0    ${Nets_info["total_count"]}
+    \    ${net_id}=    Set Variable If    '${Nets_info["ret_set"][${n}]["type"]}'=='public'    ${Nets_info["ret_set"][${n}]["net_id"]}
+    \    Run Keyword If    '${Nets_info["ret_set"][${n}]["type"]}'=='public'    Exit For Loop
+    ${resp}=    Key_JoinNets2    ${net_id}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=18012    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=18012    Fail    返回msg：${msg}
+    Key_UnbindInstanceIp    ${Nets_info["ret_set"][0]["net_id"]}
+    Key_DeleteInstances
+
+Test_12
+    [Documentation]    测试主机绑定公网ip，加入公网子网（正常返回错误信息），解绑ip，删除主机
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${resp}=    Key_DescribeIps
+    ${Ips_info}=    To Json    ${resp.content}
+    ${resp}=    Key_BindInstanceIp    ${Instances_info["ret_set"][0]["instance_id"]}    ${Ips_info["ret_set"][0]["ip_id"]}    ${Instances_info["ret_set"][0]["nets"][0]["mac_address"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    : FOR    ${n}    IN RANGE    0    ${Nets_info["total_count"]}
+    \    ${net_id}=    Set Variable If    '${Nets_info["ret_set"][${n}]["type"]}'=='public'    ${Nets_info["ret_set"][${n}]["net_id"]}
+    \    Run Keyword If    '${Nets_info["ret_set"][${n}]["type"]}'=='public'    Exit For Loop
+    ${resp}=    Key_JoinNets2    ${net_id}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=18012    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=18012    Fail    返回msg：${msg}
+    Key_UnbindInstanceIp    ${Nets_info["ret_set"][0]["net_id"]}
+    Key_DeleteInstances
+
+Test_13
+    [Documentation]    测试主机升级配置，升级为较高配置，升级为同等配置，升级为较低配置，删除主机
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    ${instance_type_id}    Set Variable    c4m8d40
+    ${resp}=    Key_ResizeInstances    ${Instances_info["ret_set"][0]["instance_id"]}    ${instance_type_id}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})==90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==90002    Fail    返回msg：${msg}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${instance_type_id}    Set Variable    c4m8d40
+    ${resp}=    Key_ResizeInstances    ${Instances_info["ret_set"][0]["instance_id"]}    ${instance_type_id}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})==90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==90002    Fail    返回msg：${msg}
+    Run Keyword If    int(${json["ret_code"]})!=15006    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=15006    Fail    返回msg：${msg}
+    ${instance_type_id}    Set Variable    c1m6d20
+    ${resp}=    Key_ResizeInstances    ${Instances_info["ret_set"][0]["instance_id"]}    ${instance_type_id}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})==90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==90002    Fail    返回msg：${msg}
+    Run Keyword If    int(${json["ret_code"]})!=15006    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=15006    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_14
+    [Documentation]    测试主机分别加载同一个硬盘，加载不同硬盘，卸载多个硬盘，删除硬盘
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${count}=    Set Variable    ${5}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    Should Be Equal As Strings    '${Disk_info["ret_set"][0]["status"]}'    'available'
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteDisks
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_15
+    [Documentation]    测试创建11个硬盘
+    [Setup]
+    ${count}=    Set Variable    ${11}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=19002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=19002    Fail    返回msg：${msg}
+
+Test_16
+    [Documentation]    测试主机挂载硬盘后是否能直接删除硬盘，卸载硬盘，删除硬盘
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${count}=    Set Variable    ${1}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteDisks
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=13002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=13002    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteDisks
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_17
+    [Documentation]    测试主机连续加载5个硬盘，分别卸载，删除所有硬盘
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${count}=    Set Variable    ${5}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    Should Be Equal As Strings    '${Disk_info["ret_set"][0]["status"]}'    'available'
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][2]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][3]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][4]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=15011    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=15011    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][1]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][2]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][3]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][4]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteDisks
+    ${json}=    To Json    ${resp.content}.
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_18
+    [Documentation]    测试创建两个主机，一个硬盘，将硬盘分别加载到两个主机，卸载硬盘，删除硬盘
+    Key_RunInstances    ${1}
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${count}=    Set Variable    ${1}
+    ${resp}=    Key_CreateDisks    ${count}
+    ${resp}=    Key_DescribeDisks
+    ${Disk_info}    To Json    ${resp.content}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_AttachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][1]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=90002    Fail    返回msg：${msg}
+    ${resp}=    Key_DetachInstanceDisks    ${Disk_info["ret_set"][0]["disk_id"]}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DeleteDisks
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_19
+    [Documentation]    测试创建主机，主机离开基础网络，加入基础网络，加入内网子网
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${resp}=    Key_LeavebaseNet    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    ${resp}=    Key_JoinbaseNet    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    : FOR    ${n}    IN RANGE    0    ${Nets_info["total_count"]}
+    \    ${Private_net}=    Set Variable If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    ${Nets_info["ret_set"][${n}]["net_id"]}
+    \    Run Keyword If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    Exit For Loop
+    ${resp}=    Key_JoinNets2    ${Private_net}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_20
+    [Documentation]    测试主机离开基础网络，加入内网子网
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${resp}=    Key_LeavebaseNet    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    : FOR    ${n}    IN RANGE    0    ${Nets_info["total_count"]}
+    \    ${Private_net}=    Set Variable If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    ${Nets_info["ret_set"][${n}]["net_id"]}
+    \    Run Keyword If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    Exit For Loop
+    #${Private_net}=    Set Variable    ${Nets_info["ret_set"][0]["net_id"]}
+    #${Private_net}=    Set Variable If    '${Nets_info["ret_set"][1]["type"]}' == 'private'    ${Nets_info["ret_set"][1]["net_id"]}
+    #${Private_net}=    Set Variable If    '${Nets_info["ret_set"][0]["type"]}' == 'private'    ${Nets_info["ret_set"][0]["net_id"]}
+    ${resp}=    Key_JoinNets2    ${Private_net}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+
+Test_21
+    [Documentation]    测试主机离开基础网络，加入基础子网 ，加入内网子网
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${resp}=    Key_LeavebaseNet    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    ${resp}=    Key_JoinbaseNet    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    ${resp}=    Key_DescribeNets
+    ${Nets_info}=    To Json    ${resp.content}
+    : FOR    ${n}    IN RANGE    0    ${Nets_info["total_count"]}
+    \    ${Private_net}=    Set Variable If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    ${Nets_info["ret_set"][${n}]["net_id"]}
+    \    Run Keyword If    '${Nets_info["ret_set"][${n}]["type"]}'=='private'    Exit For Loop
+    ${resp}=    Key_JoinNets2    ${Private_net}    ${Instances_info["ret_set"][0]["instance_id"]}
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    返回msg：${msg}
+    Key_DeleteInstances
+    [Teardown]
+
+Test_22
+    [Documentation]    测试主机离开基础网络，分别加入两个不同公网子网，加入内网子网，绑定公网ip
+    Log    123
+
+Test_23
+    [Documentation]    测试主机离开基础网络，加入同一个公网子网，加入内网子网，绑定公网ip
+    Log    123
+
+Test_24
+    [Documentation]    测试主机离开基础网络，加入公网子网，加入不同内网子网，绑定公网ip
+    Log    123
+
+Test_25
+    [Documentation]    测试主机离开基础网络，加入公网子网，加入相同内网子网，绑定公网ip
+    Log    123
+
+Test_26
+    [Documentation]    测试主机离开基础网络，加入基础网络，加入公网子网，加入内网子网，绑定公网ip
+    Log    123
+
+Test_27
+    [Documentation]    测试主机离开基础网络，加入两次基础网络，加入内网子网，绑定公网ip
+    Log    123
+
+Test_28
+    [Documentation]    测试主机离开基础网络，加入基础网络，加入公网子网，加入内网子网，绑定公网ip
+    Log    123
+
+Test_29
+    [Documentation]    测试主机离开基础网络，加入基础网络，加入公网子网，加入内网子网，绑定两次公网ip
+    Log    123
+
+test
+    [Setup]
+    Log    123
+
+*** Keywords ***
+Key_DescribeInstances
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DescribeInstances
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    ${json}=    To Json    ${resp.content}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    ${msg}
+    Log    "DescribeInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_MultiRunInstances
+    [Arguments]    ${count}
+    ${Security_groups}=    create list    ${Security_group}
+    ${Empty_list}=    create list
+    ${data}=    create dictionary    owner=${owner}    zone=${zone}    action=RunInstances    instance_name=Myins    image_id=${Image_id}
+    ...    instance_type_id=${Instance_type_id}    disks=${Empty_list}    nets=${Empty_list}    use_basenet=${TRUE}    security_groups=${Security_groups}    login_mode=PWD
+    ...    login_keypair=""    login_password=ABCabc123    count=${${count}}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${RunInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "RunInstances 连接失败！"
+    ${json}=    To Json    ${resp.content}
+    ${tmp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${tmp.content}
+    : FOR    ${n}    IN RANGE    0    int(${Instances_info["total_count"]})-1
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Test_instance_state    ${Instances_info['ret_set'][${n}]["instance_state"]}
+    \    Run Keyword If    '${Instances_info['ret_set'][${n}]["instance_state"]}'!=active    Fail    主机状态为:${Instances_info['ret_set'][${n}]["instance_state"]}
+    [Return]    ${resp}
+
+Key_RunInstances
+    [Arguments]    ${count}
+    ${Security_groups}=    create list    ${Security_group}
+    ${Empty_list}=    create list
+    ${data}=    create dictionary    owner=${owner}    zone=${zone}    action=RunInstances    instance_name=Myinstance    image_id=${Image_id}
+    ...    instance_type_id=${Instance_type_id}    disks=${Empty_list}    nets=${Empty_list}    use_basenet=${TRUE}    security_groups=${Security_groups}    login_mode=PWD
+    ...    login_keypair=""    login_password=ABCabc123    count=${${count}}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${RunInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "RunInstances 连接失败！"
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    ${msg}=    Get msg    ${resp}
+    Run Keyword If    int(${json["ret_code"]})==19002    Fail    ${msg}
+    Run Keyword If    int(${json["ret_code"]})==12001    Fail    ${msg}
+    ${tmp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${tmp.content}
+    : FOR    ${n}    IN RANGE    0    int(${Instances_info["total_count"]})-1
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Test_instance_state    ${Instances_info['ret_set'][${n}]["instance_state"]}
+    \    Run Keyword If    '${Instances_info['ret_set'][${n}]["instance_state"]}'!= 'active'    Fail    主机状态为:${Instances_info['ret_set'][${n}]["instance_state"]}
+    [Return]    ${resp}
+
+Key_StopInstances
+    ${resp}=    Key_DescribeInstances
+    ${json}    To Json    ${resp.content}
+    ${instances_list}=    create list    ${json["ret_set"][0]["instance_id"]}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=StopInstances    instances=${instances_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${StopInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    ${msg}=    Get msg    ${resp}
+    ${tmp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${tmp.content}
+    : FOR    ${n}    IN RANGE    0    int(${Instances_info["total_count"]})-1
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Test_instance_state    ${Instances_info['ret_set'][${n}]["instance_state"]}
+    \    Run Keyword If    '${Instances_info['ret_set'][${n}]["instance_state"]}'!='shutoff'    Fail    主机状态为:${Instances_info['ret_set'][${n}]["instance_state"]}
+    Log    "StopInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_StartInstances
+    ${resp}=    Key_DescribeInstances
+    ${json}    To Json    ${resp.content}
+    ${instances_list}=    create list    ${json["ret_set"][0]["instance_id"]}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=StartInstances    instances=${instances_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${StartInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    ${msg}=    Get msg    ${resp}
+    ${tmp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${tmp.content}
+    : FOR    ${n}    IN RANGE    int(${Instances_info["total_count"]})-1
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Test_instance_state    ${Instances_info['ret_set'][${n}]["instance_state"]}
+    \    Run Keyword If    '${Instances_info['ret_set'][${n}]["instance_state"]}'!="active"    Fail    主机状态为:${Instances_info['ret_set'][${n}]["instance_state"]}
+    Log    "StopInstances API测试通过！"
+    Log    "StartInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_RebootInstances
+    ${resp}=    Key_DescribeInstances
+    ${json}    To Json    ${resp.content}
+    ${instances_list}=    create list    ${json["ret_set"][0]["instance_id"]}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=RebootInstances    instances=${instances_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${RebootInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    ${msg}=    Get msg    ${resp}
+    ${tmp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${tmp.content}
+    : FOR    ${n}    IN RANGE    int(${Instances_info["total_count"]})-1
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Test_instance_state    ${Instances_info['ret_set'][${n}]["instance_state"]}
+    \    Run Keyword If    '${Instances_info['ret_set'][${n}]["instance_state"]}'!="active"    Fail    主机状态为:${Instances_info['ret_set'][${n}]["instance_state"]}
+    Log    "StopInstances API测试通过！"
+    Log    "RebootInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_UpdateInstances
+    [Arguments]    ${instance_id}    ${instance_name}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DescribeInstances    instance_id=${instance_id}    instance_name=${instance_name}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp}=    Create list    sg-desgsj6d
+    ${None_list}=    create list
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${UpdateInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "UpdateInstances 连接失败！"
+    Log    "UpdateInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_GetInstanceVnc
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp}=    Create list    sg-desgsj6d
+    ${None_list}=    create list
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${GetInstanceVnc_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Log    "GetInstanceVnc API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteInstances
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}    To Json    ${resp.content}
+    ${Instances_list}=    create list
+    : FOR    ${n}    IN RANGE    0    int(${Instances_info["total_count"]})
+    \    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    \    Append To List    ${Instances_list}    ${Instances_info["ret_set"][${n}]["instance_id"]}
+    ${data}=    create dictionary    owner=${owner}    zone=${zone}    action=DeleteInstances    instances=${Instances_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${DeleteInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})==0    Log    "DeleteInstances API调用成功!"
+    Run Keyword If    int(${json["ret_code"]})!=0    Test_ret_code    ${resp}
+    Run Keyword If    int(${json["ret_code"]})!=0    Fail    "DeleteInstances出现错误！"
+    ${resp}=    Key_DescribeInstances
+    ${json}    To Json    ${resp.content}
+    Run Keyword If    int(${json["total_count"]})!=0    Fail    "DeleteInstances API未成功删除主机！"
+    Log    "DeleteInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_RebuildInstance
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp}=    Create list    sg-desgsj6d
+    ${None_list}=    create list
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${RebuildInstance_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Log    "RebuildInstance API测试通过！"
+    [Return]    ${resp}
+
+Key_ResizeInstances
+    [Arguments]    ${instance_id}    ${instance_type_id}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=ResizeInstance    instance_id=${instance_id}    instance_type_id=${instance_type_id}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp}=    Create list    sg-desgsj6d
+    ${None_list}=    create list
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${ResizeInstances_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "ResizeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "ResizeInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_ResizeInstanceConfirm
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "ResizeInstanceConfirm API测试通过！"
+    [Return]    ${resp}
+
+Key_RevertInstanceResize
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "RevertInstanceResize API测试通过！"
+    [Return]    ${resp}
+
+Key_ChangeInstancePassword
+    [Arguments]    ${instance_id}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DescribeInstances    instance_id=${instance_id}    password=${password}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "ChangeInstancePassword 连接失败！"
+    sleep    ${ChangeInstancePassword_time}
+    Log    "ChangeInstancePassword API测试通过！"
+    [Return]    ${resp}
+
+Key_AttachInstanceDisks
+    [Arguments]    ${disk_id}    ${instance_id}
+    ${disks}=    Create list    ${disk_id}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=AttachInstanceDisks    instance_id=${instance_id}    disks=${disks}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${AttachInstanceDisks_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Log    "AttachInstanceDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_DetachInstanceDisks
+    [Arguments]    ${disk_id}    ${instance_id}
+    ${disks}=    Create list    ${disk_id}
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DetachInstanceDisks    instance_id=${instance_id}    disks=${disks}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Log    "DetachInstanceDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_BindInstanceIp
+    [Arguments]    ${instance_id}    ${ip_id}    ${mac_address}
+    ${data}=    Create dictionary    action=BindInstanceIp    owner=${owner}    zone=${zone}    instance_id=${instance_id}    ip_id=${ip_id}
+    ...    mac_address=${mac_address}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "BindInstanceIp 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "BindInstanceIp API测试通过！"
+    [Return]    ${resp}
+
+Key_UnbindInstanceIp
+    [Arguments]    ${ip_id}
+    ${data}=    Create dictionary    action=UnbindInstanceIp    owner=${owner}    zone=${zone}    ip_id=${ip_id}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "UnbindInstanceIp 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "UnBindInstanceIp API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeInstancesNotInNet
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "DescribeInstancesNotInNet API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateDisks
+    [Arguments]    ${count}
+    ${data}=    Create dictionary    action=CreateDisks    count=${${count}}    disk_name=mydisk    disk_type=${Disk_type}    owner=${owner}
+    ...    size=${Disk_size}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "CreateDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeDisks
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DescribeDisks
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Log    "DescribeDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteDisks
+    ${resp}=    Key_DescribeDisks
+    ${json}=    To Json    ${resp.content}
+    ${disks_list}    Create list
+    : FOR    ${n}    IN RANGE    0    int(${json["total_count"]})
+    \    Run Keyword If    int(${json["total_count"]})<1    Exit For Loop
+    \    Append To List    ${disks_list}    ${json["ret_set"][${n}]["disk_id"]}
+    ${data}=    Create dictionary    action=DeleteDisks    disks=${disks_list}    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp_list}=    Create list    d-7pvy9ks5    d-n5jv6cke
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DeleteDisks 连接失败！"
+    Log    "DeleteDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_ResizeDisks
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "ResizeDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_RenameDisks
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "RenameDisks API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeImages
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！"
+    Test_ret_code    ${resp}
+    Log    "DescribeImages API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateRouters
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateRouters API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteRouters
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DeleteRouters API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeRouters
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeRouters API测试通过！"
+    [Return]    ${resp}
+
+Key_UpdateRouter
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "UpdateRouter API测试通过！"
+    [Return]    ${resp}
+
+Key_EnableRouterGateway
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "EnableRouterGateway API测试通过！"
+    [Return]    ${resp}
+
+Key_DisableRouterGateway
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DisableRouterGateway API测试通过！"
+    [Return]    ${resp}
+
+Key_JoinRouter
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "JoinRouter API测试通过！"
+    [Return]    ${resp}
+
+Key_LeaveRouter
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "LeaveRouter API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeKeypairs
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeKeypairs API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateKeypairs
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateKeypairs API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteKeypairs
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DeleteKeypairs API测试通过！"
+    [Return]    ${resp}
+
+Key_UpdateKeypairs
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "UpdateKeypairs API测试通过！"
+    [Return]    ${resp}
+
+Key_AttachKeypair
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "AttachKeypair API测试通过！"
+    [Return]    ${resp}
+
+Key_DetachKeypair
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${tmp_list}    create list    i-2g3m9dev
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DetachKeypair API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeRecords
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeRecords API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeTickets
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeTickets API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeTicketDiaLogs
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeTicketDiaLogs API测试通过！"
+    [Return]    ${resp}
+
+Key_CloseTicket
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CloseTicket API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateTicket
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateTicket API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateTicketDiaLog
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateTicketDiaLog API测试通过！"
+    [Return]    ${resp}
+
+Key_QueryBillingPattern
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "QueryBillingPattern API测试通过！"
+    [Return]    ${resp}
+
+Key_QueryBillingPrice
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "QueryBillingPrice API测试通过！"
+    [Return]    ${resp}
+
+Key_PredictBillingCost
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "PredictBillingCost API测试通过！"
+    [Return]    ${resp}
+
+Key_QueryBillingFlow
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "QueryBillingFlow API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeBillingResource
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeBillingResource API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateBackups
+    [Arguments]    ${resource_id}
+    ${data}=    Create dictionary    action=CreateBackups    resource_id=${resource_id}    backup_name=mybackup    zone=${zone}    owner=${owner}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${CreateBackups_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Log    "CreateBackups API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeBackups
+    [Arguments]    ${resource_id}
+    ${data}=    Create dictionary    action=DescribeBackups    backup_type=instance    resource_id=${resource_id}    zone=${zone}    owner=${owner}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    DescribeBackups 连接失败！
+    ${json}    To Json    ${resp.content}
+    #Run Keyword If    int(${json["ret_code"]})!=0    Fail    "DescribeBackups API出现问题！"
+    Log    "DescribeBackups通过测试！"
+    [Return]    ${resp}
+
+Key_DeleteBackups
+    [Arguments]    ${resource_id}
+    ${resp}=    Key_DescribeBackups    ${resource_id}
+    ${json}=    To Json    ${resp.content}
+    ${backups_list}    Create list
+    #Pass Execution If    int(${json["ret_code"]})==11004
+    : FOR    ${n}    IN RANGE    0    int(${json["total_count"]})-1
+    \    Run Keyword If    int(${json["total_count"]})<1    Exit For Loop
+    \    Append To List    ${backups_list}    ${json["ret_set"][${n}]["backup_id"]}
+    #\    Run Keyword If    ${instance_state}==${TRUE}    Exit For Loop
+    ${data}=    Create dictionary    owner=${owner}    zone=${zone}    action=DeleteBackups    backups=${backups_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    DeleteBackups 连接失败！
+    Log    "DeleteBackups API测试通过！"
+    [Return]    ${resp}
+
+Key_ModifyBackups
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Log    "ModifyBackups API测试通过！"
+    [Return]    ${resp}
+
+Key_RestoreBackups
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "RestoreBackups API测试通过！"
+    [Return]    ${resp}
+
+Key_RestoreBackupToNew
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "RestoreBackupToNew API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeBackupConfig
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeBackupConfig API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/jsoncre
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DeleteSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeSecurityGroupByInstance
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeSecurityGroupByInstance API测试通过！"
+    [Return]    ${resp}
+
+Key_GrantSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "GrantSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_RemoveSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "RemoveSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateSecurityGroupDefaultRule
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "CreateSecurityGroupDefaultRule API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteSecurityGroupDefaultRule
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DeleteSecurityGroupDefaultRule API测试通过！"
+    [Return]    ${resp}
+
+Key_UpdateSecurityGroupRule
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "UpdateSecurityGroupRule API测试通过！"
+    [Return]    ${resp}
+
+Key_RenameSecurityGroup
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "RenameSecurityGroup API测试通过！"
+    [Return]    ${resp}
+
+Key_CreateNet
+    [Arguments]    ${net_cidr}    ${gateway_ip}    ${net_type}
+    ${data}=    Create dictionary    action=CreateNet    cidr=${net_cidr}    enable_dhcp=${TRUE}    gateway_ip=${gateway_ip}    net_name=mypublicnet
+    ...    net_type=${net_type}    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    sleep    ${CreateNet_time}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Log    "CreateNet API测试通过！"
+    [Return]    ${resp}
+
+Key_DeleteNets
+    Key
+    ${data}=    Create dictionary    action=DeleteNets    owner=${owner}    zone=${zone}    nets=${nets_list}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DeleteNets 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DeleteNets API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeNets
+    ${data}=    Create dictionary    action=DescribeNets    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeNets 连接失败！
+    Log    "DescribeNets API测试通过！"
+    [Return]    ${resp}
+
+Key_ModifyNet
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "ModifyNet API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeNetInstances
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeNetInstances API测试通过！"
+    [Return]    ${resp}
+
+Key_JoinNets1
+    [Arguments]    ${net_id}    ${instance_id}
+    ${instances}=    Create list    ${instance_id}
+    ${data}=    Create Dictionary    action=JoinNets    instances=${instances}    net_id=${net_id}    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "JoinNets1 连接失败！
+    Test_ret_code    ${resp}
+    Log    "JoinNet1 API测试通过！"
+    [Return]    ${resp}
+
+Key_JoinNets2
+    [Arguments]    ${net_id}    ${instance_id}
+    ${nets}=    Create list    ${net_id}
+    ${data}=    Create Dictionary    action=JoinNets    instance_id=${instance_id}    nets=${nets}    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "JoinNets2 连接失败！
+    Test_ret_code    ${resp}
+    Log    "JoinNets2 API测试通过！"
+    [Return]    ${resp}
+
+Key_LeaveNets
+    [Arguments]    ${nets}    ${instance_id}
+    ${data}=    Create Dictionary    zone=${zone}    owner=hhj    action=LeaveNets    nets=${nets}    instance_id=${instance_id}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "LeaveNets API测试通过！"
+    [Return]    ${resp}
+
+Key_JoinbaseNet
+    [Arguments]    ${instance_id}
+    ${data}=    Create dictionary    action=JoinbaseNet    owner=${owner}    zone=${zone}    instance_id=${instance_id}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "JoinbaseNet API测试通过！"
+    [Return]    ${resp}
+
+Key_LeavebaseNet
+    [Arguments]    ${instance_id}
+    ${data}=    Create Dictionary    zone=${zone}    owner=${owner}    action=LeavebaseNet    instance_id=${instance_id}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "LeavebaseNet API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeNetsJoinableForInstance
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "LeavebaseNet API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeQuotas
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeQuotas    API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeQuotasAll
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeQuotasAll API测试通过！"
+    [Return]    ${resp}
+
+Key_AllocateIps
+    [Arguments]    ${Ip_count}
+    ${data}=    Create dictionary    action=AllocateIps    owner=${owner}    zone=${zone}    ip_name=myip    bandwidth=${Ip_Bandwidth}
+    ...    billing_mode=BW    count=${Ip_count}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "AllocateIps API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeIps
+    ${data}=    Create dictionary    action=DescribeIps    owner=${owner}    zone=${zone}
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeIps 连接失败！
+    ${json}=    To Json    ${resp.content}
+    Run Keyword If    int(${json["ret_code"]})!= 0    Fail    "DescribeIps"
+    Log    "DescribeIps API测试通过！"
+    [Return]    ${resp}
+
+Key_ModifyIpsBillingMode
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "ModifyIpsBillingMode API测试通过！"
+    [Return]    ${resp}
+
+Key_ModifyIpsBandwidth
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "ModifyIpsBandwidth API测试通过！"
+    [Return]    ${resp}
+
+Key_ModifyIpsName
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "ModifyIpsName API测试通过！"
+    [Return]    ${resp}
+
+Key_ReleaseIps
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "ReleaseIps API测试通过！"
+    [Return]    ${resp}
+
+Key_SingleMonitors
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "SingleMonitors API测试通过！"
+    [Return]    ${resp}
+
+Key_MultiMonitors
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "MultiMonitors API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeWalletsBalance
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeWalletsBalance API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeWalletsRechargeRecords
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeWalletsRechargeRecords API测试通过！"
+    [Return]    ${resp}
+
+Key_DescribeWalletsSettleRecords
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "DescribeInstances 连接失败！
+    Test_ret_code    ${resp}
+    Log    "DescribeWalletsSettleRecords API测试通过！"
+    [Return]    ${resp}
+
+Key_RechargeWallet
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    ${ip_addr}    headers=${headers}
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${get_state}=    ${get_state}=    Test_status_code    ${resp}
+    Run Keyword If    ${get_state}==${FALSE}    Fail    "连接失败！"
+    Log    "RechargeWallet API测试通过！"
+    [Return]    ${resp}
+
+Test_status_code
+    [Arguments]    ${resp}
+    ${get_state}    Set Variable    ${FALSE}
+    #Run Keyword If    int(${resp.status_code})==200    ${Instances}=    Set Variable    false
+    ${get_state}=    Set Variable If    int(${resp.status_code})==200    ${TRUE}
+    Run Keyword If    int(${resp.status_code})==200    Log    '连接成功,通过连接测试'
+    Run Keyword If    int(${resp.status_code})==201    Log To Console    "已创建"
+    Run Keyword If    int(${resp.status_code})==202    Log To Console    '接收'
+    Run Keyword If    int(${resp.status_code})==203    Log To Console    '非认证信息'
+    Run Keyword If    int(${resp.status_code})==204    Log To Console    '无内容'
+    Run Keyword If    int(${resp.status_code})==205    Log To Console    '重置内容'
+    Run Keyword If    int(${resp.status_code})==206    Log To Console    '部分内容'
+    Run Keyword If    int(${resp.status_code})==300    Log To Console    '多路选择'
+    Run Keyword If    int(${resp.status_code})==301    Log To Console    '永久转移'
+    Run Keyword If    int(${resp.status_code})==302    Log To Console    '暂时转移'
+    Run Keyword If    int(${resp.status_code})==303    Log To Console    '参见其它'
+    Run Keyword If    int(${resp.status_code})==304    Log To Console    '未修改'
+    Run Keyword If    int(${resp.status_code})==305    Log To Console    '使用代理'
+    Run Keyword If    int(${resp.status_code})==400    Log To Console    '错误请求'
+    Run Keyword If    int(${resp.status_code})==401    Log To Console    '未认证'
+    Run Keyword If    int(${resp.status_code})==402    Log To Console    '需要付费'
+    Run Keyword If    int(${resp.status_code})==403    Log To Console    '禁止'
+    Run Keyword If    int(${resp.status_code})==404    Log To Console    '未找到'
+    Run Keyword If    int(${resp.status_code})==405    Log To Console    '方法不允许'
+    Run Keyword If    int(${resp.status_code})==406    Log To Console    '不接受'
+    Run Keyword If    int(${resp.status_code})==407    Log To Console    '需要代理认证'
+    Run Keyword If    int(${resp.status_code})==408    Log To Console    '请求超时'
+    Run Keyword If    int(${resp.status_code})==409    Log To Console    '冲突'
+    Run Keyword If    int(${resp.status_code})==410    Log To Console    '失败'
+    Run Keyword If    int(${resp.status_code})==411    Log To Console    '需要长度'
+    Run Keyword If    int(${resp.status_code})==412    Log To Console    '条件失败'
+    Run Keyword If    int(${resp.status_code})==413    Log To Console    '请求实体太大'
+    Run Keyword If    int(${resp.status_code})==414    Log To Console    '请求URI太长'
+    Run Keyword If    int(${resp.status_code})==415    Log To Console    '不支持媒体类型'
+    Run Keyword If    int(${resp.status_code})==500    Log To Console    '服务器内部错误'
+    Run Keyword If    int(${resp.status_code})==501    Log To Console    '未实现'
+    Run Keyword If    int(${resp.status_code})==502    Log To Console    '网关失败'
+    Run Keyword If    int(${resp.status_code})==504    Log To Console    '网关超时'
+    Run Keyword If    int(${resp.status_code})==505    Log To Console    'HTTP版本不支持'
+    Should Be Equal As Strings    ‘${resp.status_code}’    ‘200’
+    [Return]    ${get_state}
+
+Test_ret_code
+    [Arguments]    ${resp}
+    ${json}    To Json    ${resp.content}
+    Log    "如果有返回的api中有ret_code，则通过下面的测试，否则说明不存在！"
+    Should Contain    ‘${json}    'ret_code'
+    Log    "如果有ret_code则通过前一项测试！"
+    Log    "下面对ret_code进行测试，并返回测试结果："
+    Run Keyword If    int(${json["ret_code"]})==0    Log    '获取ret_code成功'
+    Run Keyword If    int(${json["ret_code"]})==90001    Log    '调用接口,返回：PARAMETER_ERROR'
+    Run Keyword If    int(${json["ret_code"]})==90002    Log    "调用接口,返回：REQUEST_API_ERROR"
+    Run Keyword If    int(${json["ret_code"]})==90003    Log    "调用接口,返回：REQUEST_API_UNRESPONSIVE"
+    Run Keyword If    int(${json["ret_code"]})==90004    Log    "调用接口,返回：REQUEST_API_FORBIDDEN"
+    Run Keyword If    int(${json["ret_code"]})==90005    Log    "调用接口,返回：REQUEST_API_NOT_FOUND"
+    Run Keyword If    int(${json["ret_code"]})==90006    Log    "调用接口,返回：REQUEST_API_INTERNAL_ERROR"
+    Run Keyword If    int(${json["ret_code"]})==90007    Log    "调用接口,返回：REQUEST_API_SERVICE_BUSY"
+    Run Keyword If    int(${json["ret_code"]})==90008    Log    "调用接口,返回：REQUEST_API_RESOURCE_INSUFFICIENT"
+    Run Keyword If    int(${json["ret_code"]})==90009    Log    "调用接口,返回：REQUEST_API_SERVE_UPDATING"
+    Run Keyword If    int(${json["ret_code"]})==90100    Log    "调用接口,返回：UNKNOWN_ERROR"
+    Run Keyword If    int(${json["ret_code"]})==12001    Log    "调用接口,返回：BALANCE_NOT_ENOUGH"
+    Run Keyword If    int(${json["ret_code"]})==15001    Log    "调用接口,返回：INSTANCE_LogIN_PARAMETER_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==15002    Log    "调用接口,返回：RUN_INSTANCES_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==15003    Log    "调用接口,返回：DESCRIBE_INSTANCES_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==15004    Log    "调用接口,返回：DELETE_INSTANCES_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==15005    Log    "调用接口,返回：UPDATE_INSTANCE_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==15006    Log    "调用接口,返回：INVALID_INSTANCE_TYPE"
+    Run Keyword If    int(${json["ret_code"]})==15007    Log    "调用接口,返回：INVALID_MAC_ADDRESS"
+    Run Keyword If    int(${json["ret_code"]})==15008    Log    "调用接口,返回：INVALID_IP_STATUS"
+    Run Keyword If    int(${json["ret_code"]})==15009    Log    "调用接口,返回：DUPLICATED_NETWORK"
+    Run Keyword If    int(${json["ret_code"]})==15010    Log    "调用接口,返回：INVALID_INSTANCE_STATE"
+    Run Keyword If    int(${json["ret_code"]})==15011    Log    "调用接口,返回：ATTACHED_DISKS_LIMIT_EXCEED"
+    Run Keyword If    int(${json["ret_code"]})==15012    Log    "调用接口,返回：INSTANCE_NOT_FOUND"
+    Run Keyword If    int(${json["ret_code"]})==18001    Log    "调用接口,返回：DELETE_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18002    Log    "调用接口,返回：JOIN_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18003    Log    "调用接口,返回：JOIN_NETS_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18004    Log    "调用接口,返回：LEAVE_NETS_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18005    Log    "调用接口,返回：JOIN_BASE_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18006    Log    "调用接口,返回：LEAVE_BASE_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18007    Log    "调用接口,返回：SAVE_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18008    Log    "调用接口,返回：SAVE_NETWORK_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18009    Log    "调用接口,返回：GET_NETWORK_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18010    Log    "调用接口,返回：JOIN_PUBLIC_NET_CONFLICT"
+    Run Keyword If    int(${json["ret_code"]})==18011    Log    "调用接口,返回：GET_NET_FAILED"
+    Run Keyword If    int(${json["ret_code"]})==18012    Log    "调用接口,返回：JOIN_NET_DUPLICATE"
+    Run Keyword If    int(${json["ret_code"]})==21001    Log    "调用接口,返回：ROUTER_EXTERNAL_GATEWAY_DISABLE"
+    Run Keyword If    int(${json["ret_code"]})==21002    Log    "调用接口,返回：PRIVATE_NET_JOIN_ROUTER_DISABLE"
+    Run Keyword If    int(${json["ret_code"]})==11001    Log    "调用接口,返回：SAVE_BACKUP_FAILD"
+    Run Keyword If    int(${json["ret_code"]})==11002    Log    '调用接口,返回：BACKUP_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==11003    Log    '调用接口,返回：DELETE_BACKUP_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==11004    Log    '调用接口,返回：ASSOCIATE_INSTANCE_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==11005    Log    '调用接口,返回：ASSOCIATE_DISK_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==11006    Log    '调用接口,返回：RESTORE_RESOURCE_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==11007    Log    '调用接口,返回：CONFIG_FOR_INSTANCE_BAKCUP_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==13001    Log    '调用接口,返回：CREATE_DISK_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==13002    Log    '调用接口,返回：DELETE_DISK_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==13003    Log    '调用接口,返回：DISK_RENAME_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==22001    Log    '调用接口,返回：SECURITY_GROUP_NOT_FOUND'
+    Run Keyword If    int(${json["ret_code"]})==22002    Log    '调用接口,返回：CREATE_SECURITY_GROUP_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==22003    Log    '调用接口,返回：SAVE_SECURITY_GROUP_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==22004    Log    '调用接口,返回：DEFAULT_SECURITY_CANNOT_MODIFIED'
+    Run Keyword If    int(${json["ret_code"]})==22005    Log    '调用接口,返回：SAVE_SECURITY_GROUP_RULE_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==22006    Log    '调用接口,返回：SECURITY_GROUP_RENAME_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==22007    Log    '调用接口,返回：ONE_SECURITY_PER_INSTANCE_ERROR'
+    Run Keyword If    int(${json["ret_code"]})==19001    Log    '调用接口,返回：QUOTA_QUERY_FAILED'
+    Run Keyword If    int(${json["ret_code"]})==19002    Log    '调用接口,返回：QUOTA_EXCEED'
+    Run Keyword If    int(${json["ret_code"]})==19003    Log    '调用接口,返回：QUOTA_MODIFICATION_ERROR'
+
+Get msg
+    [Arguments]    ${resp}
+    ${info}=    To Json    ${resp.content}
+    [Return]    ${info["msg"]}
+
+Put msg
+    [Arguments]    ${resp}    ${num}
+    ${info}=    To Json    ${resp.content}
+    Run Keyword If    int(${info["ret_code"]})!=int(${num})    Log    返回的信息为${info["msg"]}
+
+Test_Instance_state
+    [Arguments]    ${Instance_state}
+    Run Keyword If    '${Instance_state}'=='creating'    Log    '当前主机状态为：创建中!'
+    Run Keyword If    '${Instance_state}'=='shutoff'    Log    '当前主机状态为：已关机!'
+    Run Keyword If    '${Instance_state}'=='powering_on'    Log    '当前主机状态为：开机中!'
+    Run Keyword If    '${Instance_state}'=='powering_off'    Log    '当前主机状态为：关机中！'
+    Run Keyword If    '${Instance_state}'=='saving'    Log    '当前主机状态为：备份中!'
+    Run Keyword If    '${Instance_state}'=='recovering'    Log    '当前主机状态为：恢复中！'
+    Run Keyword If    '${Instance_state}'=='resizing'    Log    '当前主机状态为：升级中！'
+    Run Keyword If    '${Instance_state}'=='updating_password'    Log    '当前主机状态为：更新中！'
+    Run Keyword If    '${Instance_state}'=='updating_keypair'    Log    '当前主机状态为：更新中！'
+    Run Keyword If    '${Instance_state}'=='rebooting'    Log    '当前主机状态为：重启中！'
+    Run Keyword If    '${Instance_state}'=='deleting'    Log    '当前主机状态为：删除中！'
+    Run Keyword If    '${Instance_state}'=='active'    Log    '当前主机状态为：运行中！'
+    Run Keyword If    '${Instance_state}'=='error'    Log    '当前主机状态为：异常！'
+    Run Keyword If    '${Instance_state}'=='deleted'    Log    '当前主机状态为：已删除!'
+    Run Keyword If    '${Instance_state}'=='active'    Log    '当前主机状态为：运行中!'
+
+Test_Disk_state
+    [Arguments]    ${Disk_state}
+    Run Keyword If    '${Disk_state}'=='available'    Log    当前硬盘的状态为：可用
+    Run Keyword If    '${Disk_state}'=='saving'    Log    当前硬盘的状态为：备份中
+    Run Keyword If    '${Disk_state}'=='recovering'    Log    当前硬盘的状态为：恢复中
+    Run Keyword If    '${Disk_state}'=='creating'    Log    当前硬盘的状态为：创建中
+    Run Keyword If    '${Disk_state}'=='deleting'    Log    当前硬盘的状态为：删除中
+    Run Keyword If    '${Disk_state}'=='attaching'    Log    当前硬盘的状态为：挂载中
+    Run Keyword If    '${Disk_state}'=='detaching'    Log    当前硬盘的状态为：卸载中
+    Run Keyword If    '${Disk_state}'=='error'    Log    当前硬盘的状态为：异常
+    Run Keyword If    '${Disk_state}'=='in-use'    Log    当前硬盘的状态为：使用中
+    Run Keyword If    '${Disk_state}'=='deleted'    Log    当前硬盘的状态为：已删除
+    Run Keyword If    '${Disk_state}'=='maintenance'    Log    当前硬盘的状态为：maintenance
+
+Test_Image_state
+    [Arguments]    ${Image_state}
+    Run Keyword If    '${Image_state}'=='available'    Log    当前镜像的状态为：可用
+    Run Keyword If    '${Image_state}'=='error'    Log    当前镜像的状态为：异常
+
+Test_Router_state
+    [Arguments]    ${Router_state}
+    Run Keyword If    '${Router_state}'=='active'    Log    当前路由器的状态为：运行中
+    Run Keyword If    '${Router_state}'=='deleted'    Log    当前路由器的状态为：已删除
+
+Test_Ip_state
+    [Arguments]    ${Ip_state}
+    Run Keyword If    '${Ip_state}'=='available'    Log    当前公网ip的状态为：可用
+    Run Keyword If    '${Ip_state}'=='in-use'    Log    当前公网ip的状态为：已绑定
+    Run Keyword If    '${Ip_state}'=='error'    Log    当前公网ip的状态为：异常
+
+Test_DiskBackup_state
+    [Arguments]    ${DiskBackup_state}
+    Run Keyword If    '${DiskBackup_state}'=='available'    Log    当前（硬盘）备份的状态为：可用
+    Run Keyword If    '${DiskBackup_state}'=='creating'    Log    当前（硬盘）备份的状态为：创建中
+    Run Keyword If    '${DiskBackup_state}'=='deleting'    Log    当前（硬盘）备份的状态为：删除中
+    Run Keyword If    '${DiskBackup_state}'=='recovering'    Log    当前（硬盘）备份的状态为：恢复中
+    Run Keyword If    '${DiskBackup_state}'=='deleted'    Log    当前（硬盘）备份的状态为：已删除
+
+Test_InstanceBackup_state
+    [Arguments]    ${InstanceBackup_state}
+    Run Keyword If    '${InstanceBackup_state}'=='creating'    Log    目前（主机）备份的状态为：创建中
+    Run Keyword If    '${InstanceBackup_state}'=='available'    Log    目前（主机）备份的状态为：可用
+    Run Keyword If    '${InstanceBackup_state}'=='deleting'    Log    目前（主机）备份的状态为：删除中
+    Run Keyword If    '${InstanceBackup_state}'=='deleted'    Log    目前（主机）备份的状态为：已删除
+
+Delete_All_Resoures
+    ${resp}=    Key_DescribeInstances
+    ${Instances_info}=    To Json    ${resp.content}
+    Key_DeleteInstances
+    Key_DeleteDisks
+    #: FOR    ${n}    IN RANGE    0    int(${Instances_info["total_count"]})-1
+    #\    Run Keyword If    int(${Instances_info["total_count"]})<1    Exit For Loop
+    #\    Key_DeleteBackups    ${Instances_info["ret_set"][${n}]["instance_id"]}
+
+Test_instance_stateeee
+    ${headers}=    Create Dictionary    Content-Type=application/json
+    Create Session    Cloudin    https://cloudin.cn    headers=${headers}
+    ${data}=    Create dictionary    owner    ${owner}    zone    ${zone}    action
+    ...    DescribeInstances
+    ${resp}=    MyRequestsKeywords.Post    Cloudin    /api/    data=${data}
+    ${json}    To Json    ${resp.content}
+    Log To Console    "下面对instance_state进行测试，并返回测试结果："
+    ${state}=    set variable If    '${json['ret_set'][0]['instance_state']}'=='active'    ${TRUE}    ${FALSE}
+    Log To Console    'instance_state测试正常！'
